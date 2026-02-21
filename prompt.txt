@@ -24,7 +24,7 @@ GENERAL FUNCTIONALITY
 
 Homepage:
 - Fullscreen interactive map centered on Lovech, Bulgaria
-- Dark theme
+- Dark themeeeee
 - Title overlay at top center:
   "ДУПКИТЕ НА ЛОВЕЧ"
 - Subtitle:
