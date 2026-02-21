@@ -10,7 +10,7 @@ Reports become public ONLY after email verification.
 
 Tech stack requirements:
 - Next.js 14 (App Router)
-- TypeScript
+- TypeScript (test for a commit message)
 - TailwindCSS
 - Leaflet for map rendering
 - Supabase (Database + Storage)

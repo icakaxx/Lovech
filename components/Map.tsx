@@ -137,7 +137,7 @@ export function Map() {
 
       // Remove old cluster group
       if (clusterGroupRef.current) {
-        map.removeLayer(clusterGroupRef.current as L.Layer);
+        map.removeLayer(clusterGroupRef.current as unknown as L.Layer);
       }
       markersRef.current = [];
 
