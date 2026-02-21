@@ -16,6 +16,10 @@ export function getPopupContent(report: ReportWithPhotos, bucketUrl: string): st
     3: 'Над 7 см',
   };
   const label = labels[report.severity] ?? '—';
+  const fullName = [report.first_name, report.last_name].filter(Boolean).join(' ');
+  const submitter = fullName
+    ? `<p style="color:#334155;font-size:0.8rem;margin:0.5rem 0 0 0;"><strong>Подаден от:</strong> ${escapeHtml(fullName)}</p>`
+    : '';
   const comment = report.comment
     ? `<p style="color:#475569;font-size:0.875rem;margin-top:0.5rem;">${escapeHtml(report.comment)}</p>`
     : '';
@@ -34,6 +38,7 @@ export function getPopupContent(report: ReportWithPhotos, bucketUrl: string): st
     <div style="padding:0.5rem;min-width:200px;text-align:left;color:#0f172a;">
       <p style="font-weight:600;color:#0f172a;margin:0;">${escapeHtml(label)}</p>
       <p style="color:#64748b;font-size:0.75rem;margin:0.25rem 0 0 0;">${escapeHtml(date)}</p>
+      ${submitter}
       ${comment}
       ${gallery}
     </div>

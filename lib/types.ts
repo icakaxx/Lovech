@@ -11,9 +11,11 @@ export interface Report {
   lng: number;
   severity: Severity;
   comment: string | null;
-  email_hash: string;
-  verify_token_hash: string | null;
-  verified: boolean;
+  first_name?: string;
+  last_name?: string;
+  email_hash?: string;
+  verify_token_hash?: string | null;
+  verified?: boolean;
   created_at: string;
 }
 

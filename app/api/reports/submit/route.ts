@@ -57,9 +57,10 @@ export async function POST(req: NextRequest) {
   const lng = parseFloat(formData.get('lng') as string);
   const severity = parseInt(formData.get('severity') as string, 10);
   const comment = (formData.get('comment') as string)?.trim() || null;
-  const email = (formData.get('email') as string)?.trim();
+  const firstName = (formData.get('first_name') as string)?.trim() || '';
+  const lastName = (formData.get('last_name') as string)?.trim() || '';
 
-  if (!email || !Number.isFinite(lat) || !Number.isFinite(lng) || ![1, 2, 3].includes(severity)) {
+  if (!firstName || !lastName || !Number.isFinite(lat) || !Number.isFinite(lng) || ![1, 2, 3].includes(severity)) {
     return NextResponse.json(
       { error: 'Липсват задължителни полета или невалидни данни.' },
       { status: 400 }
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const emailHash = hashString(email);
+  const emailHash = hashString(`${firstName}|${lastName}`);
 
   let supabase;
   try {
@@ -103,11 +104,13 @@ export async function POST(req: NextRequest) {
       lng,
       severity,
       comment,
+      first_name: firstName,
+      last_name: lastName,
       email_hash: emailHash,
       verify_token_hash: null,
       verified: true,
     })
-    .select('id, city, lat, lng, severity, comment, created_at')
+    .select('id, city, lat, lng, severity, comment, first_name, last_name, created_at')
     .single();
 
   if (insertError || !report) {

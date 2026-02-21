@@ -33,3 +33,8 @@
 -- Optional: RLS policies (use service role from server to bypass for API routes)
 -- alter table reports enable row level security;
 -- alter table report_photos enable row level security;
+
+-- Migration: Add first_name and last_name (replace email with names, no verification)
+-- Run in Supabase SQL Editor if your reports table lacks these columns:
+alter table reports add column if not exists first_name text;
+alter table reports add column if not exists last_name text;

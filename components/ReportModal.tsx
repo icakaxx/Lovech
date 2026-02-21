@@ -13,7 +13,7 @@ interface ReportModalProps {
   lat: number;
   lng: number;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (lat: number, lng: number) => void;
   /** Called with the new report when submit succeeds, so the map can show the marker immediately */
   onReportSubmitted?: (report: ReportWithPhotos) => void;
 }
@@ -21,7 +21,8 @@ interface ReportModalProps {
 export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }: ReportModalProps) {
   const [severity, setSeverity] = useState<Severity | null>(null);
   const [comment, setComment] = useState('');
-  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<'form' | 'submitting' | 'success' | 'error'>('form');
   const [errorMessage, setErrorMessage] = useState('');
@@ -45,9 +46,8 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
 
   const validate = (): string | null => {
     if (!severity) return 'Изберете тежест на неравността.';
-    if (!email.trim()) return 'Имейлът е задължителен.';
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) return 'Въведете валиден имейл.';
+    if (!firstName.trim()) return 'Името е задължително.';
+    if (!lastName.trim()) return 'Фамилията е задължителна.';
     if (comment.length > MAX_COMMENT_LENGTH) return `Коментарът е максимум ${MAX_COMMENT_LENGTH} символа.`;
     if (files.length === 0) return 'Добавете поне една снимка.';
     if (files.length > MAX_IMAGES) return `Максимум ${MAX_IMAGES} снимки.`;
@@ -72,7 +72,8 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
     formData.set('lng', String(lng));
     formData.set('severity', String(severity));
     formData.set('comment', comment);
-    formData.set('email', email.trim());
+    formData.set('first_name', firstName.trim());
+    formData.set('last_name', lastName.trim());
     files.forEach((f, i) => formData.append('images', f));
 
     try {
@@ -103,7 +104,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
           </p>
           <button
             type="button"
-            onClick={onSuccess}
+            onClick={() => onSuccess(lat, lng)}
             className="mt-4 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white transition-smooth"
           >
             Затвори
@@ -208,16 +209,29 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Имейл *</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
-              placeholder="your@email.com"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Име *</label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                placeholder="Иван"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Фамилия *</label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+                className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                placeholder="Иванов"
+              />
+            </div>
           </div>
 
           {errorMessage && (

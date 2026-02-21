@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReportWithPhotos } from '@/lib/types';
 import type { Map as LMap, Marker as LMarker, LeafletMouseEvent } from 'leaflet';
+import type { MarkerClusterGroup } from 'leaflet';
 import { ReportModal } from '@/components/ReportModal';
 import { getPopupContent } from '@/components/MarkerPopup';
 
@@ -21,6 +22,7 @@ export function Map() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LMap | null>(null);
   const markersRef = useRef<LMarker[]>([]);
+  const clusterGroupRef = useRef<{ clearLayers: () => void; addLayer: (m: LMarker) => void } | null>(null);
   const markersRunIdRef = useRef(0);
   const [reports, setReports] = useState<ReportWithPhotos[]>([]);
   const [clickLatLng, setClickLatLng] = useState<{ lat: number; lng: number } | null>(null);
@@ -41,7 +43,11 @@ export function Map() {
         const list = data?.reports;
         if (Array.isArray(list)) {
           console.log('[Map] Setting reports, count:', list.length);
-          setReports(list);
+          setReports((prev) => {
+            const apiIds = new Set(list.map((r: ReportWithPhotos) => r.id));
+            const missingFromApi = prev.filter((r) => !apiIds.has(r.id));
+            return missingFromApi.length ? [...missingFromApi, ...list] : list;
+          });
         } else if (list === undefined && data?.error) {
           console.warn('[Map] API returned error:', data.error);
           setReports(Array.isArray(data.reports) ? data.reports : []);
@@ -78,6 +84,11 @@ export function Map() {
       map.setMaxZoom(18);
 
       map.on('click', (e: LeafletMouseEvent) => {
+        // Don't open report modal if clicking on a marker or cluster
+        const target = e.originalEvent?.target as HTMLElement;
+        if (target?.closest('.custom-marker') || target?.closest('.marker-cluster')) {
+          return;
+        }
         setClickLatLng({ lat: e.latlng.lat, lng: e.latlng.lng });
       });
 
@@ -93,6 +104,7 @@ export function Map() {
     return () => {
       cancelled = true;
       setMapReady(false);
+      clusterGroupRef.current = null;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -111,7 +123,8 @@ export function Map() {
     const reportsToShow = [...reports];
     console.log('[Map] Will render markers for', reportsToShow.length, 'reports, runId:', thisRunId);
 
-    import('leaflet').then((L) => {
+    Promise.all([import('leaflet'), import('leaflet.markercluster')]).then(([LMod]) => {
+      const L = LMod.default;
       if (thisRunId !== markersRunIdRef.current) {
         console.log('[Map] Skipping stale markers run', thisRunId);
         return;
@@ -122,8 +135,20 @@ export function Map() {
         return;
       }
 
-      markersRef.current.forEach((m) => m.remove());
+      // Remove old cluster group
+      if (clusterGroupRef.current) {
+        map.removeLayer(clusterGroupRef.current as L.Layer);
+      }
       markersRef.current = [];
+
+      const clusterGroup = (L as typeof L & { markerClusterGroup: (opts?: object) => L.Layer }).markerClusterGroup({
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+      });
+      clusterGroupRef.current = clusterGroup;
+      map.addLayer(clusterGroup);
 
       const colors: Record<1 | 2 | 3, string> = {
         1: '#22c55e',
@@ -135,21 +160,18 @@ export function Map() {
       reportsToShow.forEach((report) => {
         const lat = Number(report.lat);
         const lng = Number(report.lng);
-        console.log('[Map] Processing report:', report.id, 'lat:', lat, 'lng:', lng, 'severity:', report.severity);
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
           console.warn('[Map] Invalid coordinates for report', report.id);
           return;
         }
         const color = colors[report.severity as 1 | 2 | 3] ?? '#64748b';
-        const icon = L.default.divIcon({
+        const icon = L.divIcon({
           className: 'custom-marker',
-html: `<span style="background:${color};width:14px;height:14px;border-radius:50%;display:block;border:2px solid #0f172a;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></span>`,
-                iconSize: [14, 14],
-                iconAnchor: [7, 7],
+          html: `<span style="background:${color};width:24px;height:24px;border-radius:50%;display:block;border:3px solid #0f172a;box-shadow:0 2px 8px rgba(0,0,0,0.5);cursor:pointer;"></span>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
         });
-        const marker = L.default
-          .marker([lat, lng], { icon })
-          .addTo(map);
+        const marker = L.marker([lat, lng], { icon });
         marker.bindPopup('', {
           maxWidth: 320,
           minWidth: 280,
@@ -158,6 +180,7 @@ html: `<span style="background:${color};width:14px;height:14px;border-radius:50%
           const popup = marker.getPopup();
           if (popup) popup.setContent(getPopupContent(report, BUCKET_URL ?? ''));
         });
+        clusterGroup.addLayer(marker);
         markersRef.current.push(marker);
         addedCount++;
       });
@@ -177,13 +200,37 @@ html: `<span style="background:${color};width:14px;height:14px;border-radius:50%
   };
 
   const handleReportSubmitted = (report: ReportWithPhotos) => {
-    setReports((prev) => [report, ...prev]);
+    // Ensure report has valid coords (fallback to click position if API returns missing/invalid)
+    const safeReport = {
+      ...report,
+      lat: Number.isFinite(Number(report.lat)) ? Number(report.lat) : (clickLatLng?.lat ?? report.lat),
+      lng: Number.isFinite(Number(report.lng)) ? Number(report.lng) : (clickLatLng?.lng ?? report.lng),
+    };
+    setReports((prev) => [safeReport, ...prev]);
   };
 
-  const handleSubmitSuccess = () => {
+  const handleSubmitSuccess = (lat: number, lng: number) => {
     setClickLatLng(null);
-    // Don't refetch here – the new report was already added optimistically.
-    // Refetch would overwrite state and can make the new marker disappear if the API response is delayed or different.
+    // Pan map to the new report so the user can see it
+    if (mapRef.current) {
+      mapRef.current.flyTo([lat, lng], 16, { duration: 0.5 });
+    }
+    const doRefetch = () => {
+      fetch(`/api/reports?t=${Date.now()}`, { cache: 'no-store' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (!Array.isArray(data?.reports)) return;
+          setReports((prev) => {
+            const apiIds = new Set(data.reports.map((r: ReportWithPhotos) => r.id));
+            const missingFromApi = prev.filter((r) => !apiIds.has(r.id));
+            return [...missingFromApi, ...data.reports];
+          });
+        })
+        .catch(() => {});
+    };
+    // Refetch immediately and again after 1.5s (DB propagation)
+    doRefetch();
+    setTimeout(doRefetch, 1500);
   };
 
   return (

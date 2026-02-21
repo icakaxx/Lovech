@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { unstable_noStore as noStore } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/reports
@@ -9,6 +11,7 @@ export const dynamic = 'force-dynamic';
  * Used by the map to show markers.
  */
 export async function GET() {
+  noStore();
   console.log('[API] GET /api/reports called');
   try {
     let supabase;
@@ -21,9 +24,10 @@ export async function GET() {
     }
     const { data: reports, error: reportsError } = await supabase
       .from('reports')
-      .select('id, city, lat, lng, severity, comment, created_at')
+      .select('id, city, lat, lng, severity, comment, first_name, last_name, created_at')
       // Temporarily removed: .eq('verified', true) – show all reports for debugging
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(1000);
 
     if (reportsError) {
       console.error('GET /api/reports – Supabase error:', reportsError.message, reportsError.code);
@@ -63,7 +67,10 @@ export async function GET() {
     }));
 
     console.log('[API] Returning', reportsWithPhotos.length, 'reports with photos');
-    return NextResponse.json({ reports: reportsWithPhotos });
+    return NextResponse.json(
+      { reports: reportsWithPhotos },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
