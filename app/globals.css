@@ -49,3 +49,42 @@ body {
     @apply transition-all duration-300 ease-out;
   }
 }
+
+/* Mobile-specific Leaflet styles */
+@media (max-width: 640px) {
+  .leaflet-popup-content-wrapper {
+    max-width: 280px;
+  }
+  
+  .leaflet-popup-content {
+    margin: 10px 12px;
+    font-size: 14px;
+  }
+  
+  .leaflet-control-zoom {
+    margin-bottom: 70px !important;
+  }
+  
+  .leaflet-control-zoom a {
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    font-size: 20px !important;
+  }
+}
+
+/* Improve touch feedback for markers */
+.custom-marker {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Marker cluster touch targets */
+.marker-cluster {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.marker-cluster div {
+  font-weight: 600;
+}

@@ -97,15 +97,15 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
 
   if (status === 'success') {
     return (
-      <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-smooth">
-        <div className="rounded-2xl bg-white border border-slate-200 shadow-xl max-w-md w-full p-6 text-center">
+      <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm transition-smooth">
+        <div className="rounded-t-2xl sm:rounded-2xl bg-white border border-slate-200 shadow-xl w-full sm:max-w-md p-6 text-center">
           <p className="text-lg text-slate-900">
             Сигналът е изпратен и вече е видим на картата.
           </p>
           <button
             type="button"
             onClick={() => onSuccess(lat, lng)}
-            className="mt-4 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white transition-smooth"
+            className="mt-4 px-6 py-3 sm:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white text-base sm:text-sm transition-smooth"
           >
             Затвори
           </button>
@@ -115,8 +115,8 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
   }
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm transition-smooth">
-      <div className="rounded-2xl bg-white border border-slate-200 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm transition-smooth">
+      <div className="rounded-t-2xl sm:rounded-2xl bg-white border border-slate-200 shadow-xl w-full sm:max-w-md max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Нов сигнал</h2>
           <button
@@ -138,7 +138,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
               {([1, 2, 3] as const).map((s) => (
                 <label
                   key={s}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-smooth ${
+                  className={`flex items-center gap-3 p-4 sm:p-3 rounded-lg border cursor-pointer transition-smooth active:bg-slate-100 ${
                     severity === s
                       ? 'border-severity-' + s + ' bg-slate-50'
                       : 'border-slate-200 hover:border-slate-300'
@@ -153,10 +153,10 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
                     className="sr-only"
                   />
                   <span
-                    className="w-4 h-4 rounded-full flex-shrink-0"
+                    className="w-5 h-5 sm:w-4 sm:h-4 rounded-full flex-shrink-0"
                     style={{ background: s === 1 ? '#22c55e' : s === 2 ? '#eab308' : '#ef4444' }}
                   />
-                  <span className="text-slate-800">{SEVERITY_LABELS[s]}</span>
+                  <span className="text-base sm:text-sm text-slate-800">{SEVERITY_LABELS[s]}</span>
                 </label>
               ))}
             </div>
@@ -170,7 +170,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
               value={comment}
               onChange={(e) => setComment(e.target.value.slice(0, MAX_COMMENT_LENGTH))}
               rows={3}
-              className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+              className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-3 sm:py-2 text-base sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
               placeholder="Опишете мястото ако е нужно..."
             />
             <p className="text-xs text-slate-500 mt-1">{comment.length}/{MAX_COMMENT_LENGTH}</p>
@@ -184,6 +184,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              capture="environment"
               multiple
               onChange={handleFileChange}
               className="hidden"
@@ -191,7 +192,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full py-2 rounded-lg border border-dashed border-slate-300 text-slate-600 hover:border-slate-400 hover:text-slate-800 transition-smooth"
+              className="w-full py-3 sm:py-2 rounded-lg border border-dashed border-slate-300 text-slate-600 hover:border-slate-400 hover:text-slate-800 transition-smooth active:bg-slate-50"
             >
               + Добави снимки
             </button>
@@ -209,7 +210,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Име *</label>
               <input
@@ -217,7 +218,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-3 sm:py-2 text-base sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                 placeholder="Иван"
               />
             </div>
@@ -228,7 +229,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
-                className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-3 sm:py-2 text-base sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                 placeholder="Иванов"
               />
             </div>
@@ -238,18 +239,18 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
             <p className="text-sm text-red-600">{errorMessage}</p>
           )}
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-2 pb-2 sm:pb-0">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-smooth"
+              className="flex-1 py-3 sm:py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-smooth text-base sm:text-sm"
             >
               Отказ
             </button>
             <button
               type="submit"
               disabled={status === 'submitting'}
-              className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-medium disabled:opacity-50 transition-smooth"
+              className="flex-1 py-3 sm:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white font-medium disabled:opacity-50 transition-smooth text-base sm:text-sm"
             >
               {status === 'submitting' ? 'Изпращане...' : 'Изпрати сигнал'}
             </button>
