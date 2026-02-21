@@ -1,0 +1,185 @@
+You are a senior full-stack engineer.
+
+Build a production-ready civic web application called:
+
+"Дупките на Ловеч"
+
+Purpose:
+A public civic platform where citizens can report road potholes in Lovech, Bulgaria.
+Reports become public ONLY after email verification.
+
+Tech stack requirements:
+- Next.js 14 (App Router)
+- TypeScript
+- TailwindCSS
+- Leaflet for map rendering
+- Supabase (Database + Storage)
+- No external UI libraries except Tailwind
+- Mobile-first responsive design
+- Dark modern civic-tech theme
+
+========================================
+GENERAL FUNCTIONALITY
+========================================
+
+Homepage:
+- Fullscreen interactive map centered on Lovech, Bulgaria
+- Dark theme
+- Title overlay at top center:
+  "ДУПКИТЕ НА ЛОВЕЧ"
+- Subtitle:
+  "Гражданска карта на пътните неравности"
+
+Map:
+- Use Leaflet
+- Lock initial view to Lovech bounding box
+- Allow zoom
+- Show markers only where verified = true
+
+Marker Colors:
+- Green (severity = 1) → depth up to 3 cm
+- Yellow (severity = 2) → depth 3–7 cm
+- Red (severity = 3) → depth over 7 cm
+
+Marker popup should show:
+- Severity label
+- Comment (if provided)
+- Image gallery (up to 5 images)
+- Date submitted
+
+========================================
+REPORT SUBMISSION FLOW
+========================================
+
+When user clicks on map:
+- Open modal dialog
+- Show form:
+
+Fields:
+- Severity (radio buttons with color indicator)
+    Green: До 3 см
+    Yellow: 3–7 см
+    Red: Над 7 см
+- Comment (optional, max 500 characters)
+- Upload images (1 to 5 images allowed)
+- Email (required)
+
+Validation:
+- Email required
+- Severity required
+- Max 5 images
+- Each image max 8MB
+
+On submit:
+1. Create record in Supabase table "reports"
+   verified = false
+   store hashed email
+   store verification token (secure random string hashed in DB)
+2. Upload images to Supabase Storage bucket "pothole-photos"
+3. Send verification email with link:
+   /verify?token=XYZ
+
+After submission:
+- Show success screen:
+  "Провери имейла си, за да потвърдиш сигнала."
+
+========================================
+EMAIL VERIFICATION PAGE
+========================================
+
+Route: /verify
+
+Logic:
+- Read token from URL
+- Hash token
+- Compare with DB
+- If valid:
+    set verified = true
+    delete token
+    show success message:
+      "Сигналът беше успешно потвърден."
+- If invalid:
+    show error message
+
+========================================
+DATABASE SCHEMA (SUPABASE)
+========================================
+
+Table: reports
+- id (uuid primary key)
+- city (text default 'Lovech')
+- lat (float8)
+- lng (float8)
+- severity (int)
+- comment (text nullable)
+- email_hash (text)
+- verify_token_hash (text nullable)
+- verified (boolean default false)
+- created_at (timestamp default now())
+
+Table: report_photos
+- id (uuid)
+- report_id (uuid foreign key)
+- storage_path (text)
+- created_at
+
+Add SQL schema in comments in the project.
+
+========================================
+SECURITY REQUIREMENTS
+========================================
+
+- Only verified reports are publicly visible
+- Implement server-side filtering
+- Rate limit: 1 submission per 5 minutes per IP
+- Automatically delete unverified reports older than 48h (cron-ready function)
+- Do not expose email publicly
+- Hash email before storing
+- Hash verification token
+
+========================================
+UI DESIGN
+========================================
+
+Theme:
+- Dark background (#0f172a style)
+- Modern civic-tech look
+- Clean typography
+- Rounded modals
+- Smooth transitions
+- Mobile optimized
+
+Add small legend bottom right:
+Green – До 3 см
+Yellow – 3–7 см
+Red – Над 7 см
+
+Footer:
+"Платформата представлява гражданска инициатива за визуализиране на пътни сигнали."
+
+========================================
+EXTRA REQUIREMENTS
+========================================
+
+- Use environment variables for Supabase keys
+- Provide clear folder structure
+- Separate components:
+    Map
+    ReportModal
+    MarkerPopup
+    VerificationPage
+- Code must be clean and readable
+- Add comments explaining key logic
+
+========================================
+DELIVERABLE
+========================================
+
+Generate full working project structure:
+- All necessary files
+- Example .env.example
+- Instructions to run locally
+- Instructions to deploy on Vercel
+
+Make it production quality.
+Do not skip important implementation details.

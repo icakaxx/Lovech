@@ -1,0 +1,49 @@
+@import "leaflet/dist/leaflet.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface: #f1f5f9;
+  --surface-light: #ffffff;
+}
+
+body {
+  background: var(--surface);
+  color: #0f172a;
+}
+
+/* Leaflet container must have explicit height */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+/* Leaflet popup – light theme */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e2e8f0;
+}
+
+.leaflet-popup-tip {
+  background: #fff;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  color: #64748b;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: #0f172a;
+}
+
+/* Smooth transitions for modals */
+@layer utilities {
+  .transition-smooth {
+    @apply transition-all duration-300 ease-out;
+  }
+}
