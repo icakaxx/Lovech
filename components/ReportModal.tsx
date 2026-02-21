@@ -137,30 +137,34 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
             <div className="flex flex-col gap-2">
               {([1, 2, 3] as const).map((s) => {
                 const bgColor = s === 1 ? '#22c55e' : s === 2 ? '#eab308' : '#ef4444';
-                const selectedBg = s === 1 ? 'bg-green-50' : s === 2 ? 'bg-yellow-50' : 'bg-red-50';
+                const selectedBg = s === 1 ? 'bg-green-100' : s === 2 ? 'bg-yellow-100' : 'bg-red-100';
+                const isSelected = severity === s;
                 return (
                   <label
                     key={s}
                     className={`flex items-center gap-3 p-4 sm:p-3 rounded-lg border-2 cursor-pointer transition-smooth active:bg-slate-100 ${
-                      severity === s
-                        ? `border-2 ${selectedBg} ring-2 ring-offset-1`
+                      isSelected
+                        ? `${selectedBg} shadow-md`
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
-                    style={severity === s ? { borderColor: bgColor, ringColor: bgColor } : undefined}
+                    style={isSelected ? { borderColor: bgColor, boxShadow: `0 0 0 3px ${bgColor}33` } : undefined}
                   >
                     <input
                       type="radio"
                       name="severity"
                       value={s}
-                      checked={severity === s}
+                      checked={isSelected}
                       onChange={() => setSeverity(s)}
                       className="sr-only"
                     />
                     <span
-                      className={`w-5 h-5 sm:w-4 sm:h-4 rounded-full flex-shrink-0 ${severity === s ? 'ring-2 ring-offset-2' : ''}`}
-                      style={{ background: bgColor, ringColor: severity === s ? bgColor : undefined }}
+                      className={`w-5 h-5 sm:w-4 sm:h-4 rounded-full flex-shrink-0 ${isSelected ? 'scale-110' : ''}`}
+                      style={{ 
+                        background: bgColor, 
+                        boxShadow: isSelected ? `0 0 0 3px ${bgColor}40` : undefined 
+                      }}
                     />
-                    <span className={`text-base sm:text-sm ${severity === s ? 'font-semibold text-slate-900' : 'text-slate-800'}`}>{SEVERITY_LABELS[s]}</span>
+                    <span className={`text-base sm:text-sm ${isSelected ? 'font-semibold text-slate-900' : 'text-slate-800'}`}>{SEVERITY_LABELS[s]}</span>
                   </label>
                 );
               })}
