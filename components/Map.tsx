@@ -25,6 +25,7 @@ export function Map() {
   const clusterGroupRef = useRef<{ clearLayers: () => void; addLayer: (m: LMarker) => void } | null>(null);
   const markersRunIdRef = useRef(0);
   const [reports, setReports] = useState<ReportWithPhotos[]>([]);
+  const [pendingLatLng, setPendingLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [clickLatLng, setClickLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
@@ -89,7 +90,8 @@ export function Map() {
         if (target?.closest('.custom-marker') || target?.closest('.marker-cluster')) {
           return;
         }
-        setClickLatLng({ lat: e.latlng.lat, lng: e.latlng.lng });
+        // Show confirmation first, not the full report modal
+        setPendingLatLng({ lat: e.latlng.lat, lng: e.latlng.lng });
       });
 
       mapRef.current = map;
@@ -248,6 +250,43 @@ export function Map() {
           <p className="text-slate-700 text-sm text-center px-4 py-2 rounded-lg bg-white/95 backdrop-blur border border-slate-200 shadow-md">
             Няма потвърдени сигнали. Кликни на картата, за да подадеш нов.
           </p>
+        </div>
+      )}
+
+      {/* Location confirmation dialog */}
+      {pendingLatLng && !clickLatLng && (
+        <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
+          <div className="rounded-t-2xl sm:rounded-2xl bg-white border border-slate-200 shadow-xl w-full sm:max-w-sm p-5 text-center">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Подаване на сигнал</h3>
+            <p className="text-sm text-slate-600 mb-4">
+              Искате ли да подадете сигнал за дупка на това място?
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingLatLng(null)}
+                className="flex-1 py-3 sm:py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-smooth text-base sm:text-sm"
+              >
+                Не
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setClickLatLng(pendingLatLng);
+                  setPendingLatLng(null);
+                }}
+                className="flex-1 py-3 sm:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white font-medium transition-smooth text-base sm:text-sm"
+              >
+                Да, продължи
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

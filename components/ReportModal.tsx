@@ -135,30 +135,35 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
           <div>
             <p className="text-sm font-medium text-slate-700 mb-2">Тежест на неравността</p>
             <div className="flex flex-col gap-2">
-              {([1, 2, 3] as const).map((s) => (
-                <label
-                  key={s}
-                  className={`flex items-center gap-3 p-4 sm:p-3 rounded-lg border cursor-pointer transition-smooth active:bg-slate-100 ${
-                    severity === s
-                      ? 'border-severity-' + s + ' bg-slate-50'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="severity"
-                    value={s}
-                    checked={severity === s}
-                    onChange={() => setSeverity(s)}
-                    className="sr-only"
-                  />
-                  <span
-                    className="w-5 h-5 sm:w-4 sm:h-4 rounded-full flex-shrink-0"
-                    style={{ background: s === 1 ? '#22c55e' : s === 2 ? '#eab308' : '#ef4444' }}
-                  />
-                  <span className="text-base sm:text-sm text-slate-800">{SEVERITY_LABELS[s]}</span>
-                </label>
-              ))}
+              {([1, 2, 3] as const).map((s) => {
+                const bgColor = s === 1 ? '#22c55e' : s === 2 ? '#eab308' : '#ef4444';
+                const selectedBg = s === 1 ? 'bg-green-50' : s === 2 ? 'bg-yellow-50' : 'bg-red-50';
+                return (
+                  <label
+                    key={s}
+                    className={`flex items-center gap-3 p-4 sm:p-3 rounded-lg border-2 cursor-pointer transition-smooth active:bg-slate-100 ${
+                      severity === s
+                        ? `border-2 ${selectedBg} ring-2 ring-offset-1`
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                    style={severity === s ? { borderColor: bgColor, ringColor: bgColor } : undefined}
+                  >
+                    <input
+                      type="radio"
+                      name="severity"
+                      value={s}
+                      checked={severity === s}
+                      onChange={() => setSeverity(s)}
+                      className="sr-only"
+                    />
+                    <span
+                      className={`w-5 h-5 sm:w-4 sm:h-4 rounded-full flex-shrink-0 ${severity === s ? 'ring-2 ring-offset-2' : ''}`}
+                      style={{ background: bgColor, ringColor: severity === s ? bgColor : undefined }}
+                    />
+                    <span className={`text-base sm:text-sm ${severity === s ? 'font-semibold text-slate-900' : 'text-slate-800'}`}>{SEVERITY_LABELS[s]}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -184,7 +189,6 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               multiple
               onChange={handleFileChange}
               className="hidden"
