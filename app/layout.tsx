@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -44,6 +45,7 @@ export default function RootLayout({
     <html lang="bg" suppressHydrationWarning>
       <body className="min-h-screen antialiased bg-slate-100 text-slate-900" suppressHydrationWarning>
         {children}
+        <Analytics />
       </body>
     </html>
   );
