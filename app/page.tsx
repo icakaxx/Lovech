@@ -18,21 +18,9 @@ export default function HomePage() {
         <Map />
       </div>
 
-      {/* Legend */}
-      <div className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 z-[1000] rounded-lg bg-white/95 backdrop-blur px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 text-[10px] sm:text-xs md:text-sm text-slate-700 border border-slate-200 shadow-md pointer-events-none">
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-1" /> До 3 см
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
-          <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-2" /> 3–7 см
-        </div>
-        <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
-          <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-3" /> Над 7 см
-        </div>
-      </div>
-
-      {/* Footer - hidden on very small screens, shown on sm+ */}
-      <footer className="hidden sm:block absolute bottom-4 left-4 right-32 md:right-48 lg:right-80 z-[1000] text-xs md:text-sm text-slate-600 max-w-sm md:max-w-md space-y-1 rounded-lg bg-white/95 backdrop-blur px-3 py-2 md:px-4 md:py-3 border border-slate-200 shadow-md">
+      {/* Bottom area: footer + legend - stacked on mobile, side-by-side on sm+ */}
+      <div className="absolute bottom-2 left-2 right-2 sm:bottom-4 sm:left-4 sm:right-4 z-[1000] flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <footer className="w-full sm:w-auto sm:max-w-md text-xs md:text-sm text-slate-600 space-y-1 rounded-lg bg-white/95 backdrop-blur px-3 py-2 md:px-4 md:py-3 border border-slate-200 shadow-md pointer-events-auto order-2 sm:order-1">
         <p className="pointer-events-none">
           Гражданска инициатива за визуализиране на пътни сигнали.
         </p>
@@ -47,7 +35,19 @@ export default function HomePage() {
             H&amp;M Website Provisioning
           </a>
         </p>
-      </footer>
+        </footer>
+        <div className="rounded-lg bg-white/95 backdrop-blur px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 text-[10px] sm:text-xs md:text-sm text-slate-700 border border-slate-200 shadow-md pointer-events-auto order-1 sm:order-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-1" /> До 3 см
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-2" /> 3–7 см
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-3" /> Над 7 см
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
