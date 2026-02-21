@@ -2,14 +2,36 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Дупките на Ловеч – Гражданска карта на пътните неравности',
-  description:
-    'Публична гражданска платформа за сигнализиране на дупки по пътищата в Ловеч. Сигналите стават видими след потвърждение по имейл.',
+  metadataBase: new URL('https://signalilovech.com'),
+  title: 'Сигнали Ловеч – Гражданска карта на пътните неравности',
+  description: 'Подай сигнал за дупка на пътя в Ловеч. Виж карта с всички граждански сигнали.',
   viewport: {
     width: 'device-width',
     initialScale: 1,
     maximumScale: 1,
     userScalable: false,
+  },
+  openGraph: {
+    title: 'Сигнали Ловеч – Гражданска карта на пътните неравности',
+    description: 'Подай сигнал за дупка на пътя в Ловеч. Виж карта с всички граждански сигнали.',
+    url: 'https://signalilovech.com',
+    siteName: 'Сигнали Ловеч',
+    locale: 'bg_BG',
+    type: 'website',
+    images: [
+      {
+        url: '/og-image.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Сигнали Ловеч – Гражданска карта на пътните неравности',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Сигнали Ловеч – Гражданска карта на пътните неравности',
+    description: 'Подай сигнал за дупка на пътя в Ловеч. Виж карта с всички граждански сигнали.',
+    images: ['/og-image.jpg'],
   },
 };
 
