@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: '/og-image.jpg',
+        url: 'https://signalilovech.com/og-image.png',
         width: 1200,
         height: 630,
         alt: 'Сигнали Ловеч – Гражданска карта на пътните неравности',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Сигнали Ловеч – Гражданска карта на пътните неравности',
     description: 'Подай сигнал за дупка на пътя в Ловеч. Виж карта с всички граждански сигнали.',
-    images: ['/og-image.jpg'],
+    images: ['https://signalilovech.com/og-image.png'],
   },
 };
 
