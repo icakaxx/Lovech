@@ -215,17 +215,19 @@ export function Map() {
         map.removeLayer(draggableMarkerRef.current);
       }
       
-      // Create draggable pin icon
+      // Create draggable pin icon - animation on inner div to avoid overwriting Leaflet's transform
       const pinIcon = L.default.divIcon({
         className: 'draggable-pin',
         html: `
-          <div style="position:relative;width:40px;height:52px;">
-            <svg width="40" height="52" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M20 0C8.95 0 0 8.95 0 20C0 35 20 52 20 52S40 35 40 20C40 8.95 31.05 0 20 0Z" fill="#ef4444"/>
-              <circle cx="20" cy="20" r="8" fill="white"/>
-            </svg>
-            <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:#0f172a;color:white;padding:2px 8px;border-radius:4px;font-size:11px;white-space:nowrap;font-weight:500;">
-              Плъзни ме
+          <div class="pin-inner">
+            <div style="position:relative;width:40px;height:52px;">
+              <svg width="40" height="52" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 0C8.95 0 0 8.95 0 20C0 35 20 52 20 52S40 35 40 20C40 8.95 31.05 0 20 0Z" fill="#ef4444"/>
+                <circle cx="20" cy="20" r="8" fill="white"/>
+              </svg>
+              <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:#0f172a;color:white;padding:2px 8px;border-radius:4px;font-size:11px;white-space:nowrap;font-weight:500;">
+                Плъзни ме
+              </div>
             </div>
           </div>
         `,

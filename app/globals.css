@@ -89,16 +89,21 @@ body {
   font-weight: 600;
 }
 
-/* Draggable pin styles */
+/* Draggable pin styles - NO transform on .draggable-pin (Leaflet positions it via transform) */
 .draggable-pin {
   cursor: grab;
   -webkit-tap-highlight-color: transparent;
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
-  animation: pin-bounce 0.5s ease-out;
+  touch-action: none; /* Prevents default touch behavior on mobile */
 }
 
 .draggable-pin:active {
   cursor: grabbing;
+}
+
+/* Animate inner div only - do not touch the icon wrapper transform */
+.pin-inner {
+  animation: pin-bounce 0.5s ease-out;
 }
 
 @keyframes pin-bounce {
