@@ -23,9 +23,11 @@ export function Map() {
   const mapRef = useRef<LMap | null>(null);
   const markersRef = useRef<LMarker[]>([]);
   const clusterGroupRef = useRef<{ clearLayers: () => void; addLayer: (m: LMarker) => void } | null>(null);
+  const draggableMarkerRef = useRef<LMarker | null>(null);
   const markersRunIdRef = useRef(0);
   const [reports, setReports] = useState<ReportWithPhotos[]>([]);
   const [pendingLatLng, setPendingLatLng] = useState<{ lat: number; lng: number } | null>(null);
+  const [draggingLatLng, setDraggingLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [clickLatLng, setClickLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
@@ -85,9 +87,9 @@ export function Map() {
       map.setMaxZoom(18);
 
       map.on('click', (e: LeafletMouseEvent) => {
-        // Don't open report modal if clicking on a marker or cluster
+        // Don't open report modal if clicking on a marker, cluster, or draggable pin
         const target = e.originalEvent?.target as HTMLElement;
-        if (target?.closest('.custom-marker') || target?.closest('.marker-cluster')) {
+        if (target?.closest('.custom-marker') || target?.closest('.marker-cluster') || target?.closest('.draggable-pin')) {
           return;
         }
         // Show confirmation first, not the full report modal
@@ -190,7 +192,85 @@ export function Map() {
     });
   }, [reports, mapReady]);
 
+  // Manage draggable marker for precise location selection
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || typeof window === 'undefined') return;
+    
+    const map = mapRef.current;
+    
+    // If no dragging position, remove existing marker
+    if (!draggingLatLng) {
+      if (draggableMarkerRef.current) {
+        map.removeLayer(draggableMarkerRef.current);
+        draggableMarkerRef.current = null;
+      }
+      return;
+    }
+    
+    import('leaflet').then((L) => {
+      if (!mapRef.current) return;
+      
+      // Remove existing marker if any
+      if (draggableMarkerRef.current) {
+        map.removeLayer(draggableMarkerRef.current);
+      }
+      
+      // Create draggable pin icon
+      const pinIcon = L.default.divIcon({
+        className: 'draggable-pin',
+        html: `
+          <div style="position:relative;width:40px;height:52px;">
+            <svg width="40" height="52" viewBox="0 0 40 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 0C8.95 0 0 8.95 0 20C0 35 20 52 20 52S40 35 40 20C40 8.95 31.05 0 20 0Z" fill="#ef4444"/>
+              <circle cx="20" cy="20" r="8" fill="white"/>
+            </svg>
+            <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:#0f172a;color:white;padding:2px 8px;border-radius:4px;font-size:11px;white-space:nowrap;font-weight:500;">
+              Плъзни ме
+            </div>
+          </div>
+        `,
+        iconSize: [40, 52],
+        iconAnchor: [20, 52],
+      });
+      
+      const marker = L.default.marker([draggingLatLng.lat, draggingLatLng.lng], {
+        icon: pinIcon,
+        draggable: true,
+        autoPan: true,
+      });
+      
+      marker.on('dragend', () => {
+        const pos = marker.getLatLng();
+        setDraggingLatLng({ lat: pos.lat, lng: pos.lng });
+      });
+      
+      marker.addTo(map);
+      draggableMarkerRef.current = marker;
+      
+      // Center map on the pin
+      map.panTo([draggingLatLng.lat, draggingLatLng.lng]);
+    });
+    
+    return () => {
+      if (draggableMarkerRef.current && mapRef.current) {
+        mapRef.current.removeLayer(draggableMarkerRef.current);
+        draggableMarkerRef.current = null;
+      }
+    };
+  }, [draggingLatLng, mapReady]);
+
   const handleCloseModal = () => setClickLatLng(null);
+  
+  const handleCancelDragging = () => {
+    setDraggingLatLng(null);
+  };
+  
+  const handleConfirmLocation = () => {
+    if (draggingLatLng) {
+      setClickLatLng(draggingLatLng);
+      setDraggingLatLng(null);
+    }
+  };
 
   const refetchReports = () => {
     fetch(`/api/reports?t=${Date.now()}`, { cache: 'no-store' })
@@ -254,7 +334,7 @@ export function Map() {
       )}
 
       {/* Location confirmation dialog */}
-      {pendingLatLng && !clickLatLng && (
+      {pendingLatLng && !clickLatLng && !draggingLatLng && (
         <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
           <div className="rounded-t-2xl sm:rounded-2xl bg-white border border-slate-200 shadow-xl w-full sm:max-w-sm p-5 text-center">
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
@@ -278,12 +358,39 @@ export function Map() {
               <button
                 type="button"
                 onClick={() => {
-                  setClickLatLng(pendingLatLng);
+                  setDraggingLatLng(pendingLatLng);
                   setPendingLatLng(null);
                 }}
                 className="flex-1 py-3 sm:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white font-medium transition-smooth text-base sm:text-sm"
               >
                 Да, продължи
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Draggable pin mode - bottom controls */}
+      {draggingLatLng && !clickLatLng && (
+        <div className="fixed bottom-0 left-0 right-0 z-[2000] p-4 pb-6 sm:pb-4 bg-gradient-to-t from-white via-white to-transparent">
+          <div className="max-w-sm mx-auto">
+            <p className="text-center text-sm text-slate-600 mb-3">
+              Плъзнете маркера до точното място на дупката
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleCancelDragging}
+                className="flex-1 py-3 sm:py-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-smooth text-base sm:text-sm shadow-md"
+              >
+                Отказ
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmLocation}
+                className="flex-1 py-3 sm:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white font-medium transition-smooth text-base sm:text-sm shadow-md"
+              >
+                Потвърди
               </button>
             </div>
           </div>
