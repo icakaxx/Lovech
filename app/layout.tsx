@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://signalilovech.com'),
   title: 'Сигнали Ловеч – Гражданска карта на пътните неравности',
   description: 'Подай сигнал за дупка на пътя в Ловеч. Виж карта с всички граждански сигнали.',
+  verification: {
+    google: 'Xjz-FQa2dVvQcSlMyMGmRPRxq5KKULw0TCK7alj0b5c',
+  },
   viewport: {
     width: 'device-width',
     initialScale: 1,
