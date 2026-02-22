@@ -1,13 +1,102 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { SEVERITY_LABELS } from '@/lib/types';
 import type { Severity } from '@/lib/types';
 import type { ReportWithPhotos } from '@/lib/types';
 
 const MAX_IMAGES = 5;
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4MB (after compression)
+const TARGET_SIZE_BYTES = 1 * 1024 * 1024; // Target 1MB for compression
+const MAX_DIMENSION = 2048; // Max width/height in pixels
 const MAX_COMMENT_LENGTH = 500;
+
+/**
+ * Compress an image file using Canvas API
+ * Returns the original file if it's already small enough or if compression fails
+ */
+async function compressImage(file: File): Promise<File> {
+  // Skip non-image files
+  if (!file.type.startsWith('image/')) {
+    return file;
+  }
+
+  // If file is already small, return as-is
+  if (file.size <= TARGET_SIZE_BYTES) {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+
+      // Calculate new dimensions (maintain aspect ratio)
+      let { width, height } = img;
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+        if (width > height) {
+          height = Math.round((height * MAX_DIMENSION) / width);
+          width = MAX_DIMENSION;
+        } else {
+          width = Math.round((width * MAX_DIMENSION) / height);
+          height = MAX_DIMENSION;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      // Draw with white background (for transparency)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Try different quality levels until we get under target size
+      const tryCompress = (quality: number): void => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+
+            // If we're under target size or at minimum quality, use this result
+            if (blob.size <= TARGET_SIZE_BYTES || quality <= 0.3) {
+              const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              // Try again with lower quality
+              tryCompress(quality - 0.1);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+
+      // Start with 0.8 quality
+      tryCompress(0.8);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src);
+      resolve(file);
+    };
+
+    img.src = URL.createObjectURL(file);
+  });
+}
 
 interface ReportModalProps {
   lat: number;
@@ -26,19 +115,39 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
   const [files, setFiles] = useState<File[]>([]);
   const [status, setStatus] = useState<'form' | 'submitting' | 'success' | 'error'>('form');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const chosen = Array.from(e.target.files || []);
-    const valid: File[] = [];
-    for (const f of chosen) {
-      if (f.size > MAX_IMAGE_BYTES) continue;
-      if (valid.length >= MAX_IMAGES) break;
-      valid.push(f);
+    if (chosen.length === 0) return;
+
+    setIsCompressing(true);
+    setErrorMessage('');
+
+    try {
+      // Compress all selected images in parallel
+      const compressed = await Promise.all(chosen.map(compressImage));
+      
+      // Filter out files that are still too large after compression
+      const valid: File[] = [];
+      for (const f of compressed) {
+        if (f.size > MAX_IMAGE_BYTES) {
+          setErrorMessage(`Снимка "${f.name}" е твърде голяма дори след компресия.`);
+          continue;
+        }
+        if (valid.length >= MAX_IMAGES) break;
+        valid.push(f);
+      }
+      
+      setFiles((prev) => [...prev, ...valid].slice(0, MAX_IMAGES));
+    } catch {
+      setErrorMessage('Грешка при обработка на снимките.');
+    } finally {
+      setIsCompressing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
-    setFiles((prev) => [...prev, ...valid].slice(0, MAX_IMAGES));
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  }, []);
 
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
@@ -52,7 +161,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
     if (files.length === 0) return 'Добавете поне една снимка.';
     if (files.length > MAX_IMAGES) return `Максимум ${MAX_IMAGES} снимки.`;
     for (const f of files) {
-      if (f.size > MAX_IMAGE_BYTES) return 'Всяка снимка трябва да е до 8 MB.';
+      if (f.size > MAX_IMAGE_BYTES) return 'Снимката е твърде голяма. Опитайте с по-малка снимка.';
     }
     return null;
   };
@@ -187,7 +296,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Снимки (1–{MAX_IMAGES}, до 8 MB всяка)
+              Снимки (1–{MAX_IMAGES}, автоматично компресирани)
             </label>
             <input
               ref={fileInputRef}
@@ -195,21 +304,26 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
               accept="image/*"
               multiple
               onChange={handleFileChange}
+              disabled={isCompressing}
               className="hidden"
             />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full py-3 sm:py-2 rounded-lg border border-dashed border-slate-300 text-slate-600 hover:border-slate-400 hover:text-slate-800 transition-smooth active:bg-slate-50"
+              disabled={isCompressing}
+              className="w-full py-3 sm:py-2 rounded-lg border border-dashed border-slate-300 text-slate-600 hover:border-slate-400 hover:text-slate-800 transition-smooth active:bg-slate-50 disabled:opacity-50 disabled:cursor-wait"
             >
-              + Добави снимки
+              {isCompressing ? 'Компресиране...' : '+ Добави снимки'}
             </button>
             {files.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {files.map((f, i) => (
-                  <li key={i} className="flex items-center justify-between text-sm text-slate-600">
-                    <span className="truncate">{f.name}</span>
-                    <button type="button" onClick={() => removeFile(i)} className="text-red-600 hover:text-red-700">
+                  <li key={i} className="flex items-center justify-between text-sm text-slate-600 gap-2">
+                    <span className="truncate flex-1">{f.name}</span>
+                    <span className="text-xs text-slate-400 whitespace-nowrap">
+                      {(f.size / 1024 / 1024).toFixed(1)} MB
+                    </span>
+                    <button type="button" onClick={() => removeFile(i)} className="text-red-600 hover:text-red-700 whitespace-nowrap">
                       Премахни
                     </button>
                   </li>
@@ -257,7 +371,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
             </button>
             <button
               type="submit"
-              disabled={status === 'submitting'}
+              disabled={status === 'submitting' || isCompressing}
               className="flex-1 py-3 sm:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white font-medium disabled:opacity-50 transition-smooth text-base sm:text-sm"
             >
               {status === 'submitting' ? 'Изпращане...' : 'Изпрати сигнал'}

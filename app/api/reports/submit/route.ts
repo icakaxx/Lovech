@@ -30,7 +30,7 @@ function setRateLimit(ip: string): void {
 }
 
 const MAX_IMAGES = 5;
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4MB (images are compressed client-side)
 const BUCKET = 'pothole-photos';
 
 /**
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
   for (const f of images) {
     if (f.size > MAX_IMAGE_BYTES) {
       return NextResponse.json(
-        { error: 'Всяка снимка трябва да е до 8 MB.' },
+        { error: 'Снимката е твърде голяма. Моля, използвайте по-малка снимка.' },
         { status: 400 }
       );
     }
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
   if (!bucketExists) {
     const { error: createErr } = await supabase.storage.createBucket(BUCKET, {
       public: true,
-      fileSizeLimit: '8MB',
+      fileSizeLimit: '4MB',
       allowedMimeTypes: ['image/*'],
     });
     if (createErr) {
