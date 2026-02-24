@@ -38,13 +38,13 @@ export default function HomePage() {
         </footer>
         <div className="rounded-lg bg-white/95 backdrop-blur px-2 py-1.5 sm:px-3 sm:py-2 md:px-4 md:py-3 text-[10px] sm:text-xs md:text-sm text-slate-700 border border-slate-200 shadow-md pointer-events-auto order-1 sm:order-2 shrink-0">
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-1" /> До 3 см
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-1" /> Ниска
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
-            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-2" /> 3–7 см
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-2" /> Средна
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
-            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-3" /> Над 7 см
+            <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded-full bg-severity-3" /> Висока
           </div>
         </div>
       </div>

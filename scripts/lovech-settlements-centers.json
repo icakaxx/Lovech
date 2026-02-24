@@ -1,0 +1,54 @@
+[
+  {
+    "name": "Lovech",
+    "error": "http_403"
+  },
+  {
+    "name": "Bahovitsa",
+    "error": "http_403"
+  },
+  {
+    "name": "Lisets",
+    "error": "http_403"
+  },
+  {
+    "name": "Hlevene",
+    "error": "http_403"
+  },
+  {
+    "name": "Kazachevo",
+    "error": "http_403"
+  },
+  {
+    "name": "Slavyani",
+    "error": "http_403"
+  },
+  {
+    "name": "Vladinya",
+    "error": "http_403"
+  },
+  {
+    "name": "Goran",
+    "error": "http_403"
+  },
+  {
+    "name": "Malinovo",
+    "error": "http_403"
+  },
+  {
+    "name": "Skobelevo",
+    "error": "http_403"
+  },
+  {
+    "name": "Yoglav",
+    "error": "http_403"
+  },
+  {
+    "name": "Aleksandrovo",
+    "error": "http_403"
+  },
+  {
+    "name": "Radochina",
+    "error": "http_403"
+  }
+]

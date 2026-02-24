@@ -38,3 +38,6 @@
 -- Run in Supabase SQL Editor if your reports table lacks these columns:
 alter table reports add column if not exists first_name text;
 alter table reports add column if not exists last_name text;
+
+-- Migration 002: Multi-category civic reporting (category, status, municipality, settlement, etc.)
+-- Run lib/migrations/002_multi_category.sql in Supabase SQL Editor.

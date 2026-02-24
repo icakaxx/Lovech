@@ -1,0 +1,143 @@
+TASK: Implement 2 UX upgrades in the signalilovech (Lovech) Next.js + Supabase project.
+MAP PROVIDER: imperative Leaflet (L.default.map), markercluster, OSM tiles.
+
+GOALS:
+A) Add SETTLEMENT_CENTERS_LOVECH and auto-flyTo when the user selects a settlement in the Map filters.
+B) Fix "Друго" (Other settlement) to avoid dirty settlement data:
+   - Save settlement as 'Other' (not free text)
+   - Save the user-entered settlement name into metadata.settlement_custom
+   - Display the custom name in UI where appropriate
+
+CURRENT STATE (confirmed):
+- Map filters exist in components/Map.tsx:
+  - filterSettlement is a string, passed as query param settlement=...
+- Map uses imperative Leaflet: mapRef.current is a Leaflet map instance.
+- ReportModal has settlement state:
+  - settlement default 'Lovech'
+  - settlementOther input exists for 'Друго'
+- Submit API route inserts metadata: {} currently, and sets city: settlement (backwards compat).
+- DB already has reports.metadata jsonb, reports.settlement text, reports.municipality text, etc.
+
+========================================================
+A) SETTLEMENT_CENTERS_LOVECH + flyTo on selection
+========================================================
+
+1) Add a new constant map of settlement -> center/zoom:
+- Place it in Lovech/lib/types.ts (or create Lovech/lib/settlements-lovech.ts and export from there).
+- Use this type:
+  export const SETTLEMENT_CENTERS_LOVECH: Record<string, { lat: number; lng: number; zoom: number }>
+
+2) Include at least these keys (must match the exact strings used in SETTLEMENTS_LOVECH):
+- Lovech
+- Bahovitsa
+- Aleksandrovo
+- Slavyani
+- Vladinya
+- Goran
+- Malinovo
+- Radochina
+- Skobelevo
+- Yoglav
+(Values can be approximate for now; we can refine later.)
+
+3) Also add a fallback for "All settlements" view (municipality overview):
+- export const MUNICIPALITY_CENTER_LOVECH = { lat: 43.1332, lng: 24.7151, zoom: 12 } (or zoom 11–12)
+- (We already have LOVECH_CENTER and bounds in Map.tsx; reuse those coordinates where appropriate.)
+
+4) Update components/Map.tsx to auto move the map when filterSettlement changes:
+- Add a useEffect with deps [filterSettlement, mapReady]
+- If mapRef.current exists and mapReady is true:
+  - If filterSettlement is empty string (meaning "Всички населени места"):
+      map.flyTo(MUNICIPALITY_CENTER_LOVECH coords, MUNICIPALITY_CENTER_LOVECH.zoom, { duration: 0.8 })
+  - Else if SETTLEMENT_CENTERS_LOVECH[filterSettlement] exists:
+      map.flyTo([lat, lng], zoom, { duration: 0.8 })
+  - Else do nothing (unknown settlement)
+- IMPORTANT: This should only flyTo when user changes the settlement filter, not on every render.
+
+5) Keep bounds and min/max zoom constraints as currently set.
+
+========================================================
+B) Fix "Друго" settlement without dirty data
+========================================================
+
+PROBLEM:
+Right now "Друго" allows a free text settlementOther but the DB insert sets settlement to whatever string is selected, which may create many variants and break filters.
+
+TARGET BEHAVIOR:
+- If user selects 'Друго' in the modal:
+  - Save reports.settlement = 'Other' (a fixed string)
+  - Save metadata.settlement_custom = <user entered settlementOther trimmed>
+  - Save city = 'Other' as well for backwards compatibility (or city = settlement value being saved)
+- If user selects a normal settlement:
+  - Save settlement = that value
+  - Do not set settlement_custom in metadata
+
+REQUIRED CHANGES:
+
+1) Update Lovech/components/ReportModal.tsx:
+- Ensure settlement dropdown still shows "Друго" option.
+- If settlement === 'Друго':
+  - Show the settlementOther input (already exists)
+  - On submit, send settlement as 'Other' (not 'Друго') OR send an additional field settlement_custom.
+  - Preferred payload:
+      settlement = 'Other'
+      settlement_custom = settlementOther.trim()
+- If settlement !== 'Друго':
+  - settlement_custom should be empty/undefined
+
+2) Update Lovech/app/api/reports/submit/route.ts:
+- Read settlement and settlement_custom from the request body (FormData).
+- Implement this logic:
+  - If settlement === 'Other':
+      - Require settlement_custom to be non-empty; otherwise return 400 with a clear Bulgarian error.
+      - metadata should include { settlement_custom: <value> }
+  - Else:
+      - metadata should not include settlement_custom (or leave metadata as {})
+
+- Update the Supabase insert object:
+  - city: settlement (backward compat, but should be the final stored settlement value, i.e., 'Other' or a real settlement)
+  - settlement: settlement (final stored)
+  - metadata: { settlement_custom: ... } when Other, otherwise {}
+  - Keep municipality, category, status, etc. as currently done.
+
+3) Update display (optional but recommended):
+- In components/MarkerPopup.tsx (getPopupContent) OR wherever settlement is shown:
+  - If report.settlement === 'Other' and report.metadata?.settlement_custom exists:
+      display that custom value instead of "Other"
+  - Else display report.settlement
+
+4) Ensure Map settlement filter dropdown does NOT include 'Друго' and should not include 'Other':
+- Currently it filters out 'Друго'. Keep that.
+- Optionally also filter out 'Other' if it appears anywhere.
+- Meaning: custom settlements do not become filter options automatically.
+
+========================================================
+FILES TO MODIFY (expected)
+- Lovech/lib/types.ts (or new Lovech/lib/settlements-lovech.ts)
+- Lovech/components/Map.tsx
+- Lovech/components/ReportModal.tsx
+- Lovech/app/api/reports/submit/route.ts
+- (Optional) Lovech/components/MarkerPopup.tsx (or getPopupContent rendering)
+
+OUTPUT REQUIREMENTS:
+1) Provide exact code patches/snippets per file.
+2) Keep changes minimal and backwards compatible.
+3) No schema changes needed (metadata jsonb already exists).
+4) Do not introduce new libraries.
+
+ACCEPTANCE TESTS:
+- Selecting a settlement in the Map filter moves the map to that settlement (flyTo).
+- Selecting "Всички населени места" moves map to municipality overview center/zoom.
+- Submitting a report with "Друго" results in:
+  - settlement='Other' in DB
+  - metadata contains settlement_custom
+- Submitting a normal report results in:
+  - settlement is the selected settlement string
+  - metadata does not contain settlement_custom
+- Popup displays the custom settlement name for Other (if implemented).
+
+Small note (so you don’t get stuck)
+
+Because you’re using imperative Leaflet, the flyTo implementation is a simple useEffect in Map.tsx that uses mapRef.current. No react-leaflet hooks needed.
+
+If you want, paste the full ReportModal.tsx here (since it was “omitted for length”), and I’ll tailor the “Other” payload part to match your exact FormData names so the AI doesn’t guess.

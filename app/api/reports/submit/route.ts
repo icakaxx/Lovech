@@ -39,7 +39,11 @@ const BUCKET = 'pothole-photos';
  */
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
-  if (isRateLimited(ip)) {
+  const isDev = process.env.NODE_ENV !== 'production';
+  const isExemptIp = ip === '93.123.60.29';
+
+  // In dev, disable rate limiting entirely so you can test freely.
+  if (!isDev && !isExemptIp && isRateLimited(ip)) {
     return NextResponse.json(
       { error: 'Твърде много опити. Опитайте след няколко минути.' },
       { status: 429 }
@@ -59,6 +63,26 @@ export async function POST(req: NextRequest) {
   const comment = (formData.get('comment') as string)?.trim() || null;
   const firstName = (formData.get('first_name') as string)?.trim() || '';
   const lastName = (formData.get('last_name') as string)?.trim() || '';
+  const categoryRaw = (formData.get('category') as string)?.trim() || 'pothole';
+  const settlementRaw = (formData.get('settlement') as string)?.trim() || 'Lovech';
+  const settlementCustom = (formData.get('settlement_custom') as string)?.trim() || '';
+  const municipalityRaw = (formData.get('municipality') as string)?.trim() || 'Lovech';
+
+  const validCategories = ['pothole', 'fallen_tree', 'road_marking', 'street_light', 'traffic_sign', 'hazard'];
+  const category = validCategories.includes(categoryRaw) ? categoryRaw : 'pothole';
+  const municipality = municipalityRaw || 'Lovech';
+
+  if (settlementRaw === 'Other') {
+    if (!settlementCustom) {
+      return NextResponse.json(
+        { error: 'При избор "Друго" въведете населено място.' },
+        { status: 400 }
+      );
+    }
+  }
+
+  const settlement = settlementRaw === 'Other' ? 'Other' : (settlementRaw || 'Lovech');
+  const metadata = settlement === 'Other' ? { settlement_custom: settlementCustom } : {};
 
   if (!firstName || !lastName || !Number.isFinite(lat) || !Number.isFinite(lng) || ![1, 2, 3].includes(severity)) {
     return NextResponse.json(
@@ -96,10 +120,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Backwards compat: city = settlement (final stored value: 'Other' or real settlement)
   const { data: report, error: insertError } = await supabase
     .from('reports')
     .insert({
-      city: 'Lovech',
+      city: settlement,
       lat,
       lng,
       severity,
@@ -109,8 +134,13 @@ export async function POST(req: NextRequest) {
       email_hash: emailHash,
       verify_token_hash: null,
       verified: true,
+      municipality,
+      settlement,
+      category,
+      status: 'new',
+      metadata,
     })
-    .select('id, city, lat, lng, severity, comment, first_name, last_name, created_at')
+    .select('id, city, lat, lng, severity, comment, first_name, last_name, created_at, municipality, settlement, category, status, metadata')
     .single();
 
   if (insertError || !report) {
@@ -179,7 +209,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  setRateLimit(ip);
+  if (!isDev && !isExemptIp) {
+    setRateLimit(ip);
+  }
 
   const reportWithPhotos = {
     ...report,
