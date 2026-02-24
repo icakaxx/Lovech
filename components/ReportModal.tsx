@@ -224,7 +224,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
 
   if (status === 'success') {
     return (
-      <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm transition-smooth">
+      <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 pb-[env(safe-area-inset-bottom)] bg-black/40 backdrop-blur-sm transition-smooth">
         <div className="rounded-t-2xl sm:rounded-2xl bg-white border border-slate-200 shadow-xl w-full sm:max-w-md p-6 text-center">
           <p className="text-lg text-slate-900">
             Сигналът е изпратен и вече е видим на картата.
@@ -242,7 +242,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
   }
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm transition-smooth">
+    <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 pb-[env(safe-area-inset-bottom)] bg-black/40 backdrop-blur-sm transition-smooth">
       <div className="rounded-t-2xl sm:rounded-2xl bg-white border border-slate-200 shadow-xl w-full sm:max-w-md max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Нов сигнал</h2>
