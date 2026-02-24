@@ -177,6 +177,12 @@ export function Map() {
 
     let cancelled = false;
 
+    let handlePointerDown: ((ev: any) => void) | null = null;
+    let handlePointerMove: ((ev: any) => void) | null = null;
+    let handlePointerUp: (() => void) | null = null;
+    let handleMoveStart: (() => void) | null = null;
+    let handleZoomStart: (() => void) | null = null;
+
     import('leaflet').then((L) => {
       if (cancelled) return;
       if (mapRef.current || !containerRef.current) return;
@@ -199,14 +205,14 @@ export function Map() {
           : null;
       };
 
-      const handlePointerDown = (ev: any) => {
+      handlePointerDown = (ev: any) => {
         const pt = getPoint(ev);
         if (!pt) return;
         pointerStartRef.current = { x: pt.x, y: pt.y, time: Date.now() };
         isDraggingRef.current = false;
       };
 
-      const handlePointerMove = (ev: any) => {
+      handlePointerMove = (ev: any) => {
         if (!pointerStartRef.current) return;
         const pt = getPoint(ev);
         if (!pt) return;
@@ -218,7 +224,7 @@ export function Map() {
         }
       };
 
-      const handlePointerUp = () => {
+      handlePointerUp = () => {
         pointerStartRef.current = null;
       };
 
@@ -229,10 +235,10 @@ export function Map() {
       container.addEventListener('touchmove', handlePointerMove, { passive: true });
       container.addEventListener('touchend', handlePointerUp, { passive: true });
 
-      const handleMoveStart = () => {
+      handleMoveStart = () => {
         blockClicksUntilRef.current = Date.now() + 250;
       };
-      const handleZoomStart = () => {
+      handleZoomStart = () => {
         blockClicksUntilRef.current = Date.now() + 250;
       };
 
@@ -271,14 +277,24 @@ export function Map() {
           pendingMoveEndHandlerRef.current = null;
         }
         const container = mapRef.current.getContainer();
-        container.removeEventListener('pointerdown', handlePointerDown as any);
-        container.removeEventListener('pointermove', handlePointerMove as any);
-        container.removeEventListener('pointerup', handlePointerUp as any);
-        container.removeEventListener('touchstart', handlePointerDown as any);
-        container.removeEventListener('touchmove', handlePointerMove as any);
-        container.removeEventListener('touchend', handlePointerUp as any);
-        mapRef.current.off('movestart', handleMoveStart as any);
-        mapRef.current.off('zoomstart', handleZoomStart as any);
+        if (handlePointerDown) {
+          container.removeEventListener('pointerdown', handlePointerDown as any);
+          container.removeEventListener('touchstart', handlePointerDown as any);
+        }
+        if (handlePointerMove) {
+          container.removeEventListener('pointermove', handlePointerMove as any);
+          container.removeEventListener('touchmove', handlePointerMove as any);
+        }
+        if (handlePointerUp) {
+          container.removeEventListener('pointerup', handlePointerUp as any);
+          container.removeEventListener('touchend', handlePointerUp as any);
+        }
+        if (handleMoveStart) {
+          mapRef.current.off('movestart', handleMoveStart as any);
+        }
+        if (handleZoomStart) {
+          mapRef.current.off('zoomstart', handleZoomStart as any);
+        }
         mapRef.current.remove();
         mapRef.current = null;
       }
