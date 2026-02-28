@@ -1,23 +1,24 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://signalilovech.com'),
-  title: 'Сигнали Ловеч – Гражданска карта на пътните неравности',
-  description: 'Подай сигнал за дупка на пътя в Ловеч. Виж карта с всички граждански сигнали.',
+  title: 'SignalILovech.com – карта на сигналите в Община Ловеч',
+  description: 'Подай сигнал за проблем по пътя за 30 секунди (снимка + място). Виж всички сигнали на карта.',
   verification: {
     google: 'Xjz-FQa2dVvQcSlMyMGmRPRxq5KKULw0TCK7alj0b5c',
   },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
   openGraph: {
-    title: 'Сигнали Ловеч – Гражданска карта на пътните неравности',
-    description: 'Подай сигнал за дупка на пътя в Ловеч. Виж карта с всички граждански сигнали.',
+    title: 'SignalILovech.com – карта на сигналите в Община Ловеч',
+    description: 'Подай сигнал за проблем по пътя за 30 секунди (снимка + място). Виж всички сигнали на карта.',
     url: 'https://signalilovech.com',
     siteName: 'Сигнали Ловеч',
     locale: 'bg_BG',
@@ -27,14 +28,14 @@ export const metadata: Metadata = {
         url: 'https://signalilovech.com/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Сигнали Ловеч – Гражданска карта на пътните неравности',
+        alt: 'SignalILovech.com – карта на сигналите в Община Ловеч',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Сигнали Ловеч – Гражданска карта на пътните неравности',
-    description: 'Подай сигнал за дупка на пътя в Ловеч. Виж карта с всички граждански сигнали.',
+    title: 'SignalILovech.com – карта на сигналите в Община Ловеч',
+    description: 'Подай сигнал за проблем по пътя за 30 секунди (снимка + място). Виж всички сигнали на карта.',
     images: ['https://signalilovech.com/og-image.png'],
   },
 };

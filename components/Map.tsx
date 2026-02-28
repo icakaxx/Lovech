@@ -90,33 +90,23 @@ export function Map() {
   // Fetch reports (refetch when filters change)
   useEffect(() => {
     const url = reportsUrl();
-    console.log('[Map] Fetching reports from:', url);
     fetch(url, { cache: 'no-store', headers: { Pragma: 'no-cache' } })
-      .then((res) => {
-        console.log('[Map] Response status:', res.status);
-        return res.json();
-      })
+      .then((res) => res.json())
       .then((data) => {
-        console.log('[Map] Response data:', data);
         const list = data?.reports;
         if (Array.isArray(list)) {
-          console.log('[Map] Setting reports, count:', list.length);
           setReports((prev) => {
             const apiIds = new Set(list.map((r: ReportWithPhotos) => r.id));
             const missingFromApi = prev.filter((r) => !apiIds.has(r.id));
             return missingFromApi.length ? [...missingFromApi, ...list] : list;
           });
         } else if (list === undefined && data?.error) {
-          console.warn('[Map] API returned error:', data.error);
           setReports(Array.isArray(data.reports) ? data.reports : []);
         } else {
-          console.warn('[Map] Unexpected response format:', data);
+          setReports([]);
         }
       })
-      .catch((err) => {
-        console.error('[Map] Fetch error:', err);
-        setReports([]);
-      })
+      .catch(() => setReports([]))
       .finally(() => setLoading(false));
   }, [filterSettlement]);
 
@@ -134,8 +124,6 @@ export function Map() {
     } else if (SETTLEMENT_CENTERS_LOVECH[value]) {
       const { lat, lng, zoom } = SETTLEMENT_CENTERS_LOVECH[value];
       target = { lat, lng, zoom };
-    } else if (process.env.NODE_ENV !== 'production' && value) {
-      console.warn('[Map] No center found for settlement', value);
     }
 
     if (!target) return;
@@ -333,25 +321,17 @@ export function Map() {
 
   // Update markers when reports change or when map becomes ready
   useEffect(() => {
-    console.log('[Map] Markers effect - mapReady:', mapReady, 'reports count:', reports.length);
     if (!mapReady || !mapRef.current || typeof window === 'undefined') return;
 
     markersRunIdRef.current += 1;
     const thisRunId = markersRunIdRef.current;
     const reportsToShow = [...reports];
-    console.log('[Map] Will render markers for', reportsToShow.length, 'reports, runId:', thisRunId);
 
     Promise.all([import('leaflet'), import('leaflet.markercluster')]).then(([LMod]) => {
       const L = LMod.default;
-      if (thisRunId !== markersRunIdRef.current) {
-        console.log('[Map] Skipping stale markers run', thisRunId);
-        return;
-      }
+      if (thisRunId !== markersRunIdRef.current) return;
       const map = mapRef.current;
-      if (!map) {
-        console.log('[Map] Map ref is null, skipping markers');
-        return;
-      }
+      if (!map) return;
 
       // Remove old cluster group
       if (clusterGroupRef.current) {
@@ -374,14 +354,10 @@ export function Map() {
         3: '#ef4444',
       };
 
-      let addedCount = 0;
       reportsToShow.forEach((report) => {
         const lat = Number(report.lat);
         const lng = Number(report.lng);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-          console.warn('[Map] Invalid coordinates for report', report.id);
-          return;
-        }
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
         const category = (report.category ?? 'pothole') as ReportCategory;
         const emoji = CATEGORY_ICONS[category] ?? '🕳️';
         const color = colors[report.severity as 1 | 2 | 3] ?? '#64748b';
@@ -402,9 +378,7 @@ export function Map() {
         });
         clusterGroup.addLayer(marker);
         markersRef.current.push(marker);
-        addedCount++;
       });
-      console.log('[Map] Added', addedCount, 'markers to map');
     });
   }, [reports, mapReady]);
 
