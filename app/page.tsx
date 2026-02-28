@@ -6,10 +6,10 @@ export default function HomePage() {
       {/* Header overlay */}
       <div className="pointer-events-none absolute top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-[1000] flex flex-col items-center rounded-lg bg-white/95 backdrop-blur px-3 py-2 sm:px-4 sm:py-3 border border-slate-200 shadow-md">
         <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-slate-900 drop-shadow-sm text-center">
-          ДУПКИТЕ НА ЛОВЕЧ
+          СИГНАЛИ ЛОВЕЧ
         </h1>
         <p className="text-xs sm:text-sm md:text-base text-slate-700 mt-0.5 sm:mt-1 drop-shadow-sm text-center">
-          Гражданска карта на пътните неравности
+          Гражданска карта за сигнали
         </p>
       </div>
 

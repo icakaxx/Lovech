@@ -42,8 +42,8 @@ export function Map() {
   const [clickLatLng, setClickLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
-  const [filterCategory, setFilterCategory] = useState<ReportCategory | ''>('');
   const [filterSettlement, setFilterSettlement] = useState<string>('');
+  const [locating, setLocating] = useState(false);
 
   const clearHighlight = () => {
     if (highlightTimerRef.current != null) {
@@ -83,7 +83,6 @@ export function Map() {
   const reportsUrl = () => {
     const params = new URLSearchParams();
     params.set('t', String(Date.now()));
-    if (filterCategory) params.set('category', filterCategory);
     if (filterSettlement) params.set('settlement', filterSettlement);
     return `/api/reports?${params.toString()}`;
   };
@@ -119,7 +118,7 @@ export function Map() {
         setReports([]);
       })
       .finally(() => setLoading(false));
-  }, [filterCategory, filterSettlement]);
+  }, [filterSettlement]);
 
   const handleGoToSettlement = (value: string) => {
     if (!mapRef.current || !mapReady) return;
@@ -167,7 +166,36 @@ export function Map() {
 
   const handleBackToMunicipality = () => {
     if (!mapRef.current) return;
-    mapRef.current.flyTo([MUNICIPALITY_CENTER_LOVECH.lat, MUNICIPALITY_CENTER_LOVECH.lng], MUNICIPALITY_CENTER_LOVECH.zoom, { duration: 0.6 });
+    setFilterSettlement('');
+    const map = mapRef.current;
+    const target = {
+      lat: MUNICIPALITY_CENTER_LOVECH.lat,
+      lng: MUNICIPALITY_CENTER_LOVECH.lng,
+      zoom: MUNICIPALITY_CENTER_LOVECH.zoom,
+    };
+    lastGoToTargetRef.current = target;
+
+    if (pendingMoveEndHandlerRef.current) {
+      map.off('moveend', pendingMoveEndHandlerRef.current as any);
+      pendingMoveEndHandlerRef.current = null;
+    }
+
+    map.flyTo([target.lat, target.lng], target.zoom, { duration: 0.6 });
+
+    const handler = () => {
+      if (!mapRef.current) return;
+      if (pendingMoveEndHandlerRef.current) {
+        mapRef.current.off('moveend', pendingMoveEndHandlerRef.current as any);
+        pendingMoveEndHandlerRef.current = null;
+      }
+      const last = lastGoToTargetRef.current;
+      if (last) {
+        void showHighlightAt(last.lat, last.lng);
+      }
+    };
+
+    pendingMoveEndHandlerRef.current = handler;
+    map.on('moveend', handler);
   };
 
   // Initialize Leaflet map (client-only)
@@ -453,6 +481,29 @@ export function Map() {
   
   const handleCancelDragging = () => {
     setDraggingLatLng(null);
+    setLocating(false);
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setDraggingLatLng({ lat, lng });
+        setLocating(false);
+        if (mapRef.current) {
+          mapRef.current.panTo([lat, lng]);
+        }
+      },
+      () => {
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
   };
   
   const handleConfirmLocation = () => {
@@ -509,21 +560,11 @@ export function Map() {
     <div className="relative h-full w-full">
       <div ref={containerRef} className="absolute inset-0" />
 
-      {/* Filters: category + settlement */}
+      {/* Filters: settlement — on PC (md+) pushed below header so it doesn't hide it */}
       {mapReady && (
-        <div className="absolute top-2 left-2 right-2 z-[1000] flex justify-center pt-[env(safe-area-inset-top)]">
+        <div className="absolute top-20 md:top-24 left-2 right-2 z-[1000] flex justify-center pt-[env(safe-area-inset-top)]">
           <div className="w-full max-w-md md:max-w-xl rounded-2xl bg-white/95 backdrop-blur border border-slate-200 shadow-lg p-2 md:p-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value as ReportCategory | '')}
-                className="w-full h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
-              >
-                <option value="">Всички категории</option>
-                {(Object.keys(CATEGORY_LABELS) as ReportCategory[]).map((c) => (
-                  <option key={c} value={c}>{CATEGORY_ICONS[c]} {CATEGORY_LABELS[c]}</option>
-                ))}
-              </select>
+            <div className="flex flex-row flex-wrap items-center gap-2">
               {/** Sorted settlement options by Bulgarian label */}
               {(() => {
                 const settlementOptions = SETTLEMENTS_LOVECH
@@ -543,7 +584,7 @@ export function Map() {
                       setFilterSettlement(value);
                       handleGoToSettlement(value);
                     }}
-                    className="w-full h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                    className="min-w-0 flex-1 h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
                   >
                     <option value="">Всички населени места</option>
                     {settlementOptions.map((s) => (
@@ -557,7 +598,7 @@ export function Map() {
                 onClick={handleBackToMunicipality}
                 disabled={!mapReady}
                 title="Върни към Община Ловеч"
-                className="sm:col-span-2 w-full h-11 rounded-xl border border-slate-200 bg-slate-900 text-white text-sm shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="shrink-0 h-11 rounded-xl border border-slate-200 bg-slate-900 text-white text-sm shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60 disabled:cursor-not-allowed px-4"
               >
                 Към Община Ловеч
               </button>
@@ -569,14 +610,6 @@ export function Map() {
       {loading && (
         <div className="absolute inset-0 z-[500] flex items-center justify-center bg-white/80 backdrop-blur-sm">
           <span className="text-slate-700">Зареждане на картата...</span>
-        </div>
-      )}
-
-      {!loading && mapReady && reports.length === 0 && (
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[400] pointer-events-none">
-          <p className="text-slate-700 text-sm text-center px-4 py-2 rounded-lg bg-white/95 backdrop-blur border border-slate-200 shadow-md">
-            Няма потвърдени сигнали. Кликни на картата, за да подадеш нов.
-          </p>
         </div>
       )}
 
@@ -624,6 +657,27 @@ export function Map() {
             <p className="text-center text-sm text-slate-600 mb-3">
               Плъзнете маркера до точното място на дупката
             </p>
+            <button
+              type="button"
+              onClick={handleUseCurrentLocation}
+              disabled={locating}
+              className="w-full py-2.5 rounded-lg border border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100 active:bg-sky-200 disabled:opacity-60 disabled:cursor-not-allowed transition-smooth text-sm font-medium mb-3 flex items-center justify-center gap-2"
+            >
+              {locating ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                  Определяне на местоположение...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Моето местоположение
+                </>
+              )}
+            </button>
             <div className="flex gap-3">
               <button
                 type="button"
