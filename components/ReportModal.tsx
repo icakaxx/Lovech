@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { SEVERITY_LABELS } from '@/lib/types';
-import type { Severity } from '@/lib/types';
+import { SEVERITY_LABELS, CATEGORY_LABELS, SETTLEMENTS_LOVECH, SETTLEMENT_LABELS_BG, CATEGORY_SEVERITY_LABELS } from '@/lib/types';
+import type { Severity, ReportCategory } from '@/lib/types';
 import type { ReportWithPhotos } from '@/lib/types';
 
 const MAX_IMAGES = 5;
@@ -108,6 +108,9 @@ interface ReportModalProps {
 }
 
 export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }: ReportModalProps) {
+  const [category, setCategory] = useState<ReportCategory>('pothole');
+  const [settlement, setSettlement] = useState('Lovech');
+  const [settlementOther, setSettlementOther] = useState('');
   const [severity, setSeverity] = useState<Severity | null>(null);
   const [comment, setComment] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -117,6 +120,8 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
   const [errorMessage, setErrorMessage] = useState('');
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const severityLabels = CATEGORY_SEVERITY_LABELS[category] ?? SEVERITY_LABELS;
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const chosen = Array.from(e.target.files || []);
@@ -154,9 +159,14 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
   };
 
   const validate = (): string | null => {
-    if (!severity) return 'Изберете тежест на неравността.';
+    if (!severity) return 'Изберете тежест на сигнала.';
     if (!firstName.trim()) return 'Името е задължително.';
     if (!lastName.trim()) return 'Фамилията е задължителна.';
+    if (settlement === 'Друго') {
+      if (!settlementOther.trim()) return 'Въведете населено място при избор "Друго".';
+    } else if (!settlement) {
+      return 'Изберете населено място.';
+    }
     if (comment.length > MAX_COMMENT_LENGTH) return `Коментарът е максимум ${MAX_COMMENT_LENGTH} символа.`;
     if (files.length === 0) return 'Добавете поне една снимка.';
     if (files.length > MAX_IMAGES) return `Максимум ${MAX_IMAGES} снимки.`;
@@ -179,11 +189,19 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
     const formData = new FormData();
     formData.set('lat', String(lat));
     formData.set('lng', String(lng));
+    formData.set('category', category);
+    if (settlement === 'Друго') {
+      formData.set('settlement', 'Other');
+      formData.set('settlement_custom', settlementOther.trim());
+    } else {
+      formData.set('settlement', settlement);
+    }
+    formData.set('municipality', 'Lovech');
     formData.set('severity', String(severity));
     formData.set('comment', comment);
     formData.set('first_name', firstName.trim());
     formData.set('last_name', lastName.trim());
-    files.forEach((f, i) => formData.append('images', f));
+    files.forEach((f) => formData.append('images', f));
 
     try {
       const res = await fetch('/api/reports/submit', {
@@ -206,7 +224,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
 
   if (status === 'success') {
     return (
-      <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm transition-smooth">
+      <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 pb-[env(safe-area-inset-bottom)] bg-black/40 backdrop-blur-sm transition-smooth">
         <div className="rounded-t-2xl sm:rounded-2xl bg-white border border-slate-200 shadow-xl w-full sm:max-w-md p-6 text-center">
           <p className="text-lg text-slate-900">
             Сигналът е изпратен и вече е видим на картата.
@@ -224,7 +242,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
   }
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm transition-smooth">
+    <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-0 sm:p-4 pb-[env(safe-area-inset-bottom)] bg-black/40 backdrop-blur-sm transition-smooth">
       <div className="rounded-t-2xl sm:rounded-2xl bg-white border border-slate-200 shadow-xl w-full sm:max-w-md max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Нов сигнал</h2>
@@ -242,7 +260,43 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <p className="text-sm font-medium text-slate-700 mb-2">Тежест на неравността</p>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Категория *</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as ReportCategory)}
+              className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-3 sm:py-2 text-base sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+            >
+              {(Object.keys(CATEGORY_LABELS) as ReportCategory[]).map((c) => (
+                <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Населено място *</label>
+            <select
+              value={settlement}
+              onChange={(e) => setSettlement(e.target.value)}
+              className="w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-3 sm:py-2 text-base sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+            >
+              {SETTLEMENTS_LOVECH.filter((s) => s !== 'Друго').map((s) => (
+                <option key={s} value={s}>{SETTLEMENT_LABELS_BG[s] ?? s}</option>
+              ))}
+              <option value="Друго">Друго</option>
+            </select>
+            {settlement === 'Друго' && (
+              <input
+                type="text"
+                value={settlementOther}
+                onChange={(e) => setSettlementOther(e.target.value)}
+                placeholder="Въведете населено място"
+                className="mt-2 w-full rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+              />
+            )}
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-slate-700 mb-2">Тежест на сигнала</p>
             <div className="flex flex-col gap-2">
               {([1, 2, 3] as const).map((s) => {
                 const bgColor = s === 1 ? '#22c55e' : s === 2 ? '#eab308' : '#ef4444';
@@ -273,7 +327,7 @@ export function ReportModal({ lat, lng, onClose, onSuccess, onReportSubmitted }:
                         boxShadow: isSelected ? `0 0 0 3px ${bgColor}40` : undefined 
                       }}
                     />
-                    <span className={`text-base sm:text-sm ${isSelected ? 'font-semibold text-slate-900' : 'text-slate-800'}`}>{SEVERITY_LABELS[s]}</span>
+                    <span className={`text-base sm:text-sm ${isSelected ? 'font-semibold text-slate-900' : 'text-slate-800'}`}>{severityLabels[s]}</span>
                   </label>
                 );
               })}

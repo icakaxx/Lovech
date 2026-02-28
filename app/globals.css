@@ -89,6 +89,49 @@ body {
   font-weight: 600;
 }
 
+/* Pulsing highlight pin (used after flyTo) */
+.pulse-marker {
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+
+.pulse-marker .pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  transform: translate(-50%, -50%);
+  background: #ef4444;
+  border: 2px solid #0f172a;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.pulse-marker .ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  transform: translate(-50%, -50%);
+  background: rgba(239, 68, 68, 0.25);
+  animation: pulse 1s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(6);
+    opacity: 0;
+  }
+}
+
 /* Draggable pin styles - NO transform on .draggable-pin (Leaflet positions it via transform) */
 .draggable-pin {
   cursor: grab;

@@ -1,18 +1,22 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { ReportWithPhotos } from '@/lib/types';
+import type { ReportWithPhotos, ReportCategory } from '@/lib/types';
+import {
+  CATEGORY_ICONS,
+  CATEGORY_LABELS,
+  SETTLEMENTS_LOVECH,
+  SETTLEMENT_CENTERS_LOVECH,
+  MUNICIPALITY_CENTER_LOVECH,
+  SETTLEMENT_LABELS_BG,
+} from '@/lib/types';
 import type { Map as LMap, Marker as LMarker, LeafletMouseEvent } from 'leaflet';
 import type { MarkerClusterGroup } from 'leaflet';
 import { ReportModal } from '@/components/ReportModal';
 import { getPopupContent } from '@/components/MarkerPopup';
 
-// Lovech, Bulgaria bounds (lock initial view)
+// Lovech, Bulgaria initial view (bounds moved to MUNICIPALITY_BOUNDS_LOVECH in lib/types.ts)
 const LOVECH_CENTER: [number, number] = [43.1332, 24.7151];
-const LOVECH_BOUNDS: [[number, number], [number, number]] = [
-  [43.08, 24.62],
-  [43.18, 24.82],
-];
 
 const BUCKET_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -25,16 +29,68 @@ export function Map() {
   const clusterGroupRef = useRef<{ clearLayers: () => void; addLayer: (m: LMarker) => void } | null>(null);
   const draggableMarkerRef = useRef<LMarker | null>(null);
   const markersRunIdRef = useRef(0);
+  const highlightMarkerRef = useRef<LMarker | null>(null);
+  const highlightTimerRef = useRef<number | null>(null);
+  const pendingMoveEndHandlerRef = useRef<((...args: any[]) => void) | null>(null);
+  const lastGoToTargetRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
+  const pointerStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const isDraggingRef = useRef(false);
+  const blockClicksUntilRef = useRef(0);
   const [reports, setReports] = useState<ReportWithPhotos[]>([]);
   const [pendingLatLng, setPendingLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [draggingLatLng, setDraggingLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [clickLatLng, setClickLatLng] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [mapReady, setMapReady] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<ReportCategory | ''>('');
+  const [filterSettlement, setFilterSettlement] = useState<string>('');
 
-  // Fetch reports on load (no cache + cache-buster so reload always gets fresh data)
+  const clearHighlight = () => {
+    if (highlightTimerRef.current != null) {
+      window.clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = null;
+    }
+    if (highlightMarkerRef.current && mapRef.current) {
+      mapRef.current.removeLayer(highlightMarkerRef.current);
+    }
+    highlightMarkerRef.current = null;
+  };
+
+  const showHighlightAt = async (lat: number, lng: number) => {
+    clearHighlight();
+    if (!mapRef.current) return;
+    const { default: L } = await import('leaflet');
+    const icon = L.divIcon({
+      className: 'pulse-marker',
+      html: '<div class="pulse-marker"><div class="ring"></div><div class="pin"></div></div>',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    });
+    const marker = L.marker([lat, lng], {
+      icon,
+      interactive: false,
+      keyboard: false,
+    });
+    marker.addTo(mapRef.current);
+    highlightMarkerRef.current = marker;
+    const timer = window.setTimeout(() => {
+      clearHighlight();
+    }, 5000);
+    highlightTimerRef.current = timer;
+  };
+
+  // Build API URL with optional filters
+  const reportsUrl = () => {
+    const params = new URLSearchParams();
+    params.set('t', String(Date.now()));
+    if (filterCategory) params.set('category', filterCategory);
+    if (filterSettlement) params.set('settlement', filterSettlement);
+    return `/api/reports?${params.toString()}`;
+  };
+
+  // Fetch reports (refetch when filters change)
   useEffect(() => {
-    const url = `/api/reports?t=${Date.now()}`;
+    const url = reportsUrl();
     console.log('[Map] Fetching reports from:', url);
     fetch(url, { cache: 'no-store', headers: { Pragma: 'no-cache' } })
       .then((res) => {
@@ -63,7 +119,56 @@ export function Map() {
         setReports([]);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [filterCategory, filterSettlement]);
+
+  const handleGoToSettlement = (value: string) => {
+    if (!mapRef.current || !mapReady) return;
+    const map = mapRef.current;
+
+    let target: { lat: number; lng: number; zoom: number } | null = null;
+    if (value === '') {
+      target = {
+        lat: MUNICIPALITY_CENTER_LOVECH.lat,
+        lng: MUNICIPALITY_CENTER_LOVECH.lng,
+        zoom: MUNICIPALITY_CENTER_LOVECH.zoom,
+      };
+    } else if (SETTLEMENT_CENTERS_LOVECH[value]) {
+      const { lat, lng, zoom } = SETTLEMENT_CENTERS_LOVECH[value];
+      target = { lat, lng, zoom };
+    } else if (process.env.NODE_ENV !== 'production' && value) {
+      console.warn('[Map] No center found for settlement', value);
+    }
+
+    if (!target) return;
+    lastGoToTargetRef.current = target;
+
+    if (pendingMoveEndHandlerRef.current && mapRef.current) {
+      mapRef.current.off('moveend', pendingMoveEndHandlerRef.current as any);
+      pendingMoveEndHandlerRef.current = null;
+    }
+
+    map.flyTo([target.lat, target.lng], target.zoom, { duration: 0.8 });
+
+    const handler = () => {
+      if (!mapRef.current) return;
+      if (pendingMoveEndHandlerRef.current) {
+        mapRef.current.off('moveend', pendingMoveEndHandlerRef.current as any);
+        pendingMoveEndHandlerRef.current = null;
+      }
+      const last = lastGoToTargetRef.current;
+      if (last) {
+        void showHighlightAt(last.lat, last.lng);
+      }
+    };
+
+    pendingMoveEndHandlerRef.current = handler;
+    map.on('moveend', handler);
+  };
+
+  const handleBackToMunicipality = () => {
+    if (!mapRef.current) return;
+    mapRef.current.flyTo([MUNICIPALITY_CENTER_LOVECH.lat, MUNICIPALITY_CENTER_LOVECH.lng], MUNICIPALITY_CENTER_LOVECH.zoom, { duration: 0.6 });
+  };
 
   // Initialize Leaflet map (client-only)
   useEffect(() => {
@@ -71,6 +176,12 @@ export function Map() {
     if (mapRef.current) return;
 
     let cancelled = false;
+
+    let handlePointerDown: ((ev: any) => void) | null = null;
+    let handlePointerMove: ((ev: any) => void) | null = null;
+    let handlePointerUp: (() => void) | null = null;
+    let handleMoveStart: (() => void) | null = null;
+    let handleZoomStart: (() => void) | null = null;
 
     import('leaflet').then((L) => {
       if (cancelled) return;
@@ -82,9 +193,57 @@ export function Map() {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map);
 
-      map.setMaxBounds(LOVECH_BOUNDS);
       map.setMinZoom(12);
       map.setMaxZoom(18);
+
+      const container = map.getContainer();
+
+      const getPoint = (ev: any) => {
+        const e = ev?.touches?.[0] || ev?.changedTouches?.[0] || ev;
+        return e && typeof e.clientX === 'number' && typeof e.clientY === 'number'
+          ? { x: e.clientX as number, y: e.clientY as number }
+          : null;
+      };
+
+      handlePointerDown = (ev: any) => {
+        const pt = getPoint(ev);
+        if (!pt) return;
+        pointerStartRef.current = { x: pt.x, y: pt.y, time: Date.now() };
+        isDraggingRef.current = false;
+      };
+
+      handlePointerMove = (ev: any) => {
+        if (!pointerStartRef.current) return;
+        const pt = getPoint(ev);
+        if (!pt) return;
+        const dx = pt.x - pointerStartRef.current.x;
+        const dy = pt.y - pointerStartRef.current.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 10) {
+          isDraggingRef.current = true;
+        }
+      };
+
+      handlePointerUp = () => {
+        pointerStartRef.current = null;
+      };
+
+      container.addEventListener('pointerdown', handlePointerDown, { passive: true });
+      container.addEventListener('pointermove', handlePointerMove, { passive: true });
+      container.addEventListener('pointerup', handlePointerUp, { passive: true });
+      container.addEventListener('touchstart', handlePointerDown, { passive: true });
+      container.addEventListener('touchmove', handlePointerMove, { passive: true });
+      container.addEventListener('touchend', handlePointerUp, { passive: true });
+
+      handleMoveStart = () => {
+        blockClicksUntilRef.current = Date.now() + 250;
+      };
+      handleZoomStart = () => {
+        blockClicksUntilRef.current = Date.now() + 250;
+      };
+
+      map.on('movestart', handleMoveStart);
+      map.on('zoomstart', handleZoomStart);
 
       map.on('click', (e: LeafletMouseEvent) => {
         // Don't open report modal if clicking on a marker, cluster, or draggable pin
@@ -92,6 +251,9 @@ export function Map() {
         if (target?.closest('.custom-marker') || target?.closest('.marker-cluster') || target?.closest('.draggable-pin')) {
           return;
         }
+        const now = Date.now();
+        if (now < blockClicksUntilRef.current) return;
+        if (isDraggingRef.current) return;
         // Show confirmation first, not the full report modal
         setPendingLatLng({ lat: e.latlng.lat, lng: e.latlng.lng });
       });
@@ -110,9 +272,33 @@ export function Map() {
       setMapReady(false);
       clusterGroupRef.current = null;
       if (mapRef.current) {
+        if (pendingMoveEndHandlerRef.current) {
+          mapRef.current.off('moveend', pendingMoveEndHandlerRef.current as any);
+          pendingMoveEndHandlerRef.current = null;
+        }
+        const container = mapRef.current.getContainer();
+        if (handlePointerDown) {
+          container.removeEventListener('pointerdown', handlePointerDown as any);
+          container.removeEventListener('touchstart', handlePointerDown as any);
+        }
+        if (handlePointerMove) {
+          container.removeEventListener('pointermove', handlePointerMove as any);
+          container.removeEventListener('touchmove', handlePointerMove as any);
+        }
+        if (handlePointerUp) {
+          container.removeEventListener('pointerup', handlePointerUp as any);
+          container.removeEventListener('touchend', handlePointerUp as any);
+        }
+        if (handleMoveStart) {
+          mapRef.current.off('movestart', handleMoveStart as any);
+        }
+        if (handleZoomStart) {
+          mapRef.current.off('zoomstart', handleZoomStart as any);
+        }
         mapRef.current.remove();
         mapRef.current = null;
       }
+      clearHighlight();
       markersRef.current = [];
     };
   }, []);
@@ -168,12 +354,14 @@ export function Map() {
           console.warn('[Map] Invalid coordinates for report', report.id);
           return;
         }
+        const category = (report.category ?? 'pothole') as ReportCategory;
+        const emoji = CATEGORY_ICONS[category] ?? '🕳️';
         const color = colors[report.severity as 1 | 2 | 3] ?? '#64748b';
         const icon = L.divIcon({
           className: 'custom-marker',
-          html: `<span style="background:${color};width:24px;height:24px;border-radius:50%;display:block;border:3px solid #0f172a;box-shadow:0 2px 8px rgba(0,0,0,0.5);cursor:pointer;"></span>`,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
+          html: `<span style="background:${color};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #0f172a;box-shadow:0 2px 8px rgba(0,0,0,0.5);cursor:pointer;font-size:14px;line-height:1;">${emoji}</span>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
         });
         const marker = L.marker([lat, lng], { icon });
         marker.bindPopup('', {
@@ -275,7 +463,7 @@ export function Map() {
   };
 
   const refetchReports = () => {
-    fetch(`/api/reports?t=${Date.now()}`, { cache: 'no-store' })
+    fetch(reportsUrl(), { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data.reports)) setReports(data.reports);
@@ -300,7 +488,7 @@ export function Map() {
       mapRef.current.flyTo([lat, lng], 16, { duration: 0.5 });
     }
     const doRefetch = () => {
-      fetch(`/api/reports?t=${Date.now()}`, { cache: 'no-store' })
+      fetch(reportsUrl(), { cache: 'no-store' })
         .then((res) => res.json())
         .then((data) => {
           if (!Array.isArray(data?.reports)) return;
@@ -320,6 +508,63 @@ export function Map() {
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="absolute inset-0" />
+
+      {/* Filters: category + settlement */}
+      {mapReady && (
+        <div className="absolute top-2 left-2 right-2 z-[1000] flex justify-center pt-[env(safe-area-inset-top)]">
+          <div className="w-full max-w-md md:max-w-xl rounded-2xl bg-white/95 backdrop-blur border border-slate-200 shadow-lg p-2 md:p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value as ReportCategory | '')}
+                className="w-full h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+              >
+                <option value="">Всички категории</option>
+                {(Object.keys(CATEGORY_LABELS) as ReportCategory[]).map((c) => (
+                  <option key={c} value={c}>{CATEGORY_ICONS[c]} {CATEGORY_LABELS[c]}</option>
+                ))}
+              </select>
+              {/** Sorted settlement options by Bulgarian label */}
+              {(() => {
+                const settlementOptions = SETTLEMENTS_LOVECH
+                  .filter((s) => s !== 'Друго' && s !== 'Other')
+                  .slice()
+                  .sort((a, b) =>
+                    (SETTLEMENT_LABELS_BG[a] ?? a).localeCompare(
+                      SETTLEMENT_LABELS_BG[b] ?? b,
+                      'bg',
+                    ),
+                  );
+                return (
+                  <select
+                    value={filterSettlement}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFilterSettlement(value);
+                      handleGoToSettlement(value);
+                    }}
+                    className="w-full h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                  >
+                    <option value="">Всички населени места</option>
+                    {settlementOptions.map((s) => (
+                      <option key={s} value={s}>{SETTLEMENT_LABELS_BG[s] ?? s}</option>
+                    ))}
+                  </select>
+                );
+              })()}
+              <button
+                type="button"
+                onClick={handleBackToMunicipality}
+                disabled={!mapReady}
+                title="Върни към Община Ловеч"
+                className="sm:col-span-2 w-full h-11 rounded-xl border border-slate-200 bg-slate-900 text-white text-sm shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Към Община Ловеч
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div className="absolute inset-0 z-[500] flex items-center justify-center bg-white/80 backdrop-blur-sm">
