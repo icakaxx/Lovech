@@ -1,8 +1,10 @@
 import { Map } from '@/components/Map';
+import { PromoTicker } from '@/components/PromoTicker';
 
 export default function HomePage() {
   return (
     <main className="relative min-h-screen bg-slate-100 overflow-hidden">
+      <PromoTicker />
       {/* Header overlay */}
       <div className="pointer-events-none absolute top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 z-[1000] flex flex-col items-center rounded-lg bg-white/95 backdrop-blur px-3 py-2 sm:px-4 sm:py-3 border border-slate-200 shadow-md">
         <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-slate-900 drop-shadow-sm text-center">

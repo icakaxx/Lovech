@@ -162,3 +162,22 @@ body {
     opacity: 1;
   }
 }
+
+/* Promo ticker marquee */
+@keyframes promo-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.promo-ticker .marquee-inner {
+  animation: promo-scroll 45s linear infinite;
+}
+
+.promo-ticker:hover .marquee-inner,
+.promo-ticker .marquee-inner.promo-ticker--paused {
+  animation-play-state: paused;
+}
