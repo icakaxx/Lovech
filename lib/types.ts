@@ -141,6 +141,7 @@ export const SETTLEMENTS_LOVECH: string[] = [
   'Smochan',
   'Slatina',
   'Doyrentsi',
+  'Umarevtsi',
   'Друго',
 ];
 
@@ -166,6 +167,7 @@ export const SETTLEMENT_CENTERS_LOVECH: Record<string, { lat: number; lng: numbe
   Smochan:      { lat: 43.18284018591901,  lng: 24.798492400391574, zoom: 13 },
   Slatina:      { lat: 43.2535967929977,   lng: 24.72723214191891,  zoom: 13 },
   Doyrentsi:    { lat: 43.231284636810045, lng: 24.83739829825162,  zoom: 13 },
+  Umarevtsi:    { lat: 43.192359667799465, lng: 24.782863367178326, zoom: 13 },
 };
 
 /** Bulgarian labels for settlements (UI display). */
@@ -190,6 +192,7 @@ export const SETTLEMENT_LABELS_BG: Record<string, string> = {
   Smochan: 'Смочан',
   Slatina: 'Слатина',
   Doyrentsi: 'Дойренци',
+  Umarevtsi: 'Умаревци',
 };
 
 /** Municipality overview (all settlements). */

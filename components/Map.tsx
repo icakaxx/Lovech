@@ -571,10 +571,10 @@ export function Map() {
                 type="button"
                 onClick={handleBackToMunicipality}
                 disabled={!mapReady}
-                title="Върни към Община Ловеч"
+                title="Върни към град Ловеч"
                 className="shrink-0 h-11 rounded-xl border border-slate-200 bg-slate-900 text-white text-sm shadow-sm hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60 disabled:cursor-not-allowed px-4"
               >
-                Към Община Ловеч
+                Към град Ловеч
               </button>
             </div>
           </div>
